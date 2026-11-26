@@ -1,6 +1,10 @@
 package hei.school;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 public class Exercise {
 
@@ -57,5 +61,24 @@ public class Exercise {
 
     public void setDeadline(LocalDate deadline) {
         this.deadline = deadline;
+    }
+
+    /**
+     * Grade out of 20, after the late penalty: 10% per started day late, capped at 50%.
+     * The deadline day itself is not late.
+     */
+    public static BigDecimal gradeOutOf20(double rawPoints, double maxPoints, LocalDate deadline,
+            LocalDateTime submittedAt) {
+        BigDecimal base = BigDecimal.valueOf(rawPoints)
+                .multiply(BigDecimal.valueOf(20))
+                .divide(BigDecimal.valueOf(maxPoints), 10, RoundingMode.HALF_UP);
+        long daysLate = Math.max(0, ChronoUnit.DAYS.between(deadline, submittedAt.toLocalDate()));
+        BigDecimal penaltyRate = BigDecimal.valueOf(Math.min(daysLate, 5))
+                .multiply(new BigDecimal("0.10"));
+        BigDecimal grade = base.multiply(BigDecimal.ONE.subtract(penaltyRate));
+        if (grade.signum() < 0) {
+            grade = BigDecimal.ZERO;
+        }
+        return grade.setScale(1, RoundingMode.HALF_UP);
     }
 }

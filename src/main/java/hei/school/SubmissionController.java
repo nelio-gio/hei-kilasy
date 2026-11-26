@@ -99,7 +99,7 @@ public class SubmissionController {
             double raw = ((BigDecimal) row.get("raw_points")).doubleValue();
             double max = ((BigDecimal) row.get("max_points")).doubleValue();
             result.put("rawPoints", raw);
-            result.put("grade", Math.round(raw / max * 20 * 10) / 10.0);
+            result.put("grade", Exercise.gradeOutOf20(raw, max, deadline, submittedAt));
             result.put("feedback", row.get("feedback"));
         }
         return ResponseEntity.ok(result);
@@ -127,15 +127,15 @@ public class SubmissionController {
             return ResponseEntity.badRequest().body(Map.of("error", "Les points doivent être entre 0 et " + max));
         }
 
-        jdbcTemplate.update("UPDATE submission SET raw_points = ?, feedback = ?, graded_at = now() WHERE id = ?",
-                points, feedback, id);
-
-        // grade out of 20
-        double grade = Math.round(points / max * 20 * 10) / 10.0;
-
         LocalDate deadline = ((java.sql.Date) row.get("deadline")).toLocalDate();
         LocalDateTime submittedAt = ((Timestamp) row.get("submitted_at")).toLocalDateTime();
         boolean late = submittedAt.toLocalDate().isAfter(deadline);
+
+        jdbcTemplate.update("UPDATE submission SET raw_points = ?, feedback = ?, graded_at = now() WHERE id = ?",
+                points, feedback, id);
+
+        // grade out of 20, with the late penalty
+        BigDecimal grade = Exercise.gradeOutOf20(points, max, deadline, submittedAt);
 
         // notify the student by email
         String fullName = (String) row.get("full_name");

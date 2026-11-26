@@ -1,6 +1,8 @@
 package hei.school;
 
 import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 
@@ -32,10 +34,12 @@ public class CsvExport {
         for (Map<String, Object> row : rows) {
             String note = "";
             if (row.get("raw_points") != null) {
-                double n = ((BigDecimal) row.get("raw_points")).doubleValue()
-                        / ((BigDecimal) row.get("max_points")).doubleValue() * 20;
-                n = Math.floor(n * 10) / 10;
-                note = String.valueOf(n).replace('.', ',');
+                BigDecimal grade = Exercise.gradeOutOf20(
+                        ((BigDecimal) row.get("raw_points")).doubleValue(),
+                        ((BigDecimal) row.get("max_points")).doubleValue(),
+                        ((Date) row.get("deadline")).toLocalDate(),
+                        ((Timestamp) row.get("submitted_at")).toLocalDateTime());
+                note = grade.toPlainString().replace('.', ',');
             }
             csv.append(row.get("reference")).append(';')
                     .append(row.get("full_name")).append(';')
