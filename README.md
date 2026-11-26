@@ -28,6 +28,8 @@ The API responds on http://localhost:8080.
 
 **The SQL scripts are idempotent**: at every startup the schema and the demo data are created only if missing, and existing data is kept. To start from scratch, run `docker compose down` (PostgreSQL has no persistent volume, so removing the container wipes the data). The demo data is: 2 teachers, 6 students, 5 exercises and 12 submissions.
 
+After changing `schema.sql`, run `docker compose down` then `docker compose up -d`: the script does not alter an existing table.
+
 ## API
 
 | Method | Path | Purpose |
@@ -35,6 +37,7 @@ The API responds on http://localhost:8080.
 | GET | `/exercises` | List exercises |
 | GET | `/exercises/{id}` | Exercise details |
 | POST | `/exercises` | Create an exercise (teacher) |
+| POST | `/exercises/{id}/start` | Start the timer for a timed exercise (student) |
 | POST | `/exercises/{id}/submissions` | Submit an exercise (student) |
 | GET | `/submissions/{id}` | Submission details |
 | PUT | `/submissions/{id}/grade` | Grade a submission (teacher) |
@@ -54,12 +57,24 @@ curl -X POST http://localhost:8080/exercises \
   -d '{"title": "Recherche dichotomique", "maxPoints": 20, "deadline": "2027-03-01", "teacherId": 1}'
 ```
 
-Submit an exercise:
+Create a timed exercise without a deadline:
 
 ```bash
+curl -X POST http://localhost:8080/exercises \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Exercice minuté", "maxPoints": 20, "durationMinutes": 30, "teacherId": 1}'
+```
+
+Start a timed exercise, then submit it:
+
+```bash
+curl -X POST http://localhost:8080/exercises/4/start \
+  -H "Content-Type: application/json" \
+  -d '{"studentId": 1}'
+
 curl -X POST http://localhost:8080/exercises/4/submissions \
   -H "Content-Type: application/json" \
-  -d '{"studentId": 2, "repoUrl": "https://github.com/bob/reservation-api"}'
+  -d '{"studentId": 1, "repoUrl": "https://github.com/alice/reservation-api"}'
 ```
 
 Grade a submission, then check the email received at http://localhost:8025:
@@ -81,5 +96,8 @@ curl http://localhost:8080/exports/grades.csv
 
 - A submission contains code, a link to a GitHub repository, or both.
 - A student can only submit once per exercise.
-- A submission sent after the deadline day is marked as late.
+- An exercise can have a deadline, a duration in minutes, or both.
+- For a timed exercise, the student must call `POST /exercises/{id}/start` before submitting. A submission after the timer ends is refused with HTTP 422.
+- A submission sent after the deadline day is marked as late, even for a timed exercise.
 - Points are entered on the exercise's scale (10, 20, 40…) and converted to a grade out of 20.
+- The transcript shows the time used for each timed exercise.

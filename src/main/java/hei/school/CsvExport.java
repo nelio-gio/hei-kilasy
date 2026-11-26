@@ -34,19 +34,21 @@ public class CsvExport {
         for (Map<String, Object> row : rows) {
             String note = "";
             if (row.get("raw_points") != null) {
+                Date deadline = row.get("deadline") == null ? null : (Date) row.get("deadline");
                 BigDecimal grade = Exercise.gradeOutOf20(
                         ((BigDecimal) row.get("raw_points")).doubleValue(),
                         ((BigDecimal) row.get("max_points")).doubleValue(),
-                        ((Date) row.get("deadline")).toLocalDate(),
+                        deadline == null ? null : deadline.toLocalDate(),
                         ((Timestamp) row.get("submitted_at")).toLocalDateTime());
                 note = grade.toPlainString().replace('.', ',');
             }
+            Object deadlineValue = row.get("deadline");
             csv.append(row.get("reference")).append(';')
                     .append(row.get("full_name")).append(';')
                     .append(row.get("email")).append(';')
                     .append(row.get("cohort")).append(';')
                     .append(row.get("title")).append(';')
-                    .append(row.get("deadline")).append(';')
+                    .append(deadlineValue == null ? "" : deadlineValue).append(';')
                     .append(row.get("submitted_at")).append(';')
                     .append(Boolean.TRUE.equals(row.get("late")) ? "oui" : "non").append(';')
                     .append(note).append('\n');
