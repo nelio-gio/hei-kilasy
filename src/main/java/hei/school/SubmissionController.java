@@ -29,6 +29,9 @@ public class SubmissionController {
     @Autowired
     private JavaMailSender mailSender;
 
+    @Autowired
+    private SmsSender smsSender;
+
     @PostMapping("/exercises/{id}/submissions")
     public ResponseEntity<?> submit(@PathVariable long id, @RequestBody Map<String, Object> body) {
         if (body.get("studentId") == null) {
@@ -154,6 +157,20 @@ public class SubmissionController {
         message.setText(text);
         mailSender.send(message);
         System.out.println("Email de note envoyé à " + row.get("email"));
+
+        // SMS notification: a failure must not prevent the grade from being published
+        String phone = (String) row.get("phone");
+        if (phone != null && !phone.isBlank()) {
+            String smsText = "Votre note pour « " + title + " » est disponible : "
+                    + grade.toPlainString().replace('.', ',') + "/20.";
+            try {
+                smsSender.send(phone, smsText);
+            } catch (Exception ex) {
+                System.err.println("[SMS] Échec de l'envoi à " + phone + " : " + ex.getMessage());
+            }
+        } else {
+            System.err.println("[SMS] Aucun numéro pour " + fullName);
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", id);
